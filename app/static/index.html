@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>API de citas · datos abiertos</title>
+<meta name="description" content="API pública con los días de espera para citas médicas en hospitales públicos de Colombia, a partir de datos.gov.co.">
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --text: #e6edf3; --muted: #9da7b3;
+    --accent: #3fb950; --warn: #d29922; --err: #f85149; --border: #30363d;
+    --mono: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 var(--mono); }
+  main { max-width: 860px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: clamp(1.4rem, 4vw, 2rem); margin: 0 0 8px; }
+  h1 .prompt { color: var(--accent); }
+  p { color: var(--muted); margin: 0 0 24px; }
+  a { color: var(--accent); }
+  .term { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; margin: 0 0 20px; overflow: hidden; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  .bar code { flex: 1 1 240px; word-break: break-all; }
+  button { font: inherit; background: transparent; color: var(--accent); border: 1px solid var(--accent); border-radius: 6px; padding: 4px 12px; cursor: pointer; min-height: 44px; }
+  button:focus-visible, a:focus-visible { outline: 2px solid var(--warn); outline-offset: 2px; }
+  pre { margin: 0; padding: 12px; max-height: 280px; overflow: auto; font-size: 14px; white-space: pre-wrap; word-break: break-word; }
+  .estado { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 0 0 32px; }
+  .dato { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+  .dato b { display: block; font-size: 1.4rem; }
+  .dato span { color: var(--muted); font-size: 0.85rem; }
+  .ok { color: var(--accent); } .mal { color: var(--err); }
+  footer { color: var(--muted); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1><span class="prompt">$</span> api de oportunidad de citas</h1>
+  <p>Cuántos días se espera una cita médica en hospitales públicos de Colombia, unificado desde datos.gov.co. Solo lectura, sin registro. <a href="/docs">Documentación interactiva</a>.</p>
+
+  <section aria-labelledby="t-estado">
+    <h2 id="t-estado" style="font-size:1rem">Panel de estado</h2>
+    <div class="estado" id="estado" aria-live="polite">
+      <div class="dato"><b id="e-api">…</b><span>API y base de datos</span></div>
+      <div class="dato"><b id="e-hosp">…</b><span>hospitales</span></div>
+      <div class="dato"><b id="e-reg">…</b><span>registros</span></div>
+      <div class="dato"><b id="e-etl">…</b><span>última carga del ETL</span></div>
+      <div class="dato"><b id="e-p95">…</b><span>latencia p95</span></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="t-ej">
+    <h2 id="t-ej" style="font-size:1rem">Pruébala en vivo</h2>
+    <div id="ejemplos"></div>
+  </section>
+
+  <footer>Fuente: <a href="https://www.datos.gov.co">datos.gov.co</a>, indicadores de la Resolución 1552 de 2013 publicados por cada hospital. Si la página tarda en responder, el servidor gratuito se está despertando.</footer>
+</main>
+<script>
+  const ejemplos = ["/health", "/hospitales", "/especialidades", "/oportunidad?limit=5"];
+  const cont = document.getElementById("ejemplos");
+  for (const ruta of ejemplos) {
+    const div = document.createElement("div");
+    div.className = "term";
+    div.innerHTML = `<div class="bar"><code>GET ${ruta}</code><button type="button">Ejecutar</button></div><pre aria-live="polite"></pre>`;
+    const salida = div.querySelector("pre");
+    div.querySelector("button").addEventListener("click", async () => {
+      salida.textContent = "cargando…";
+      const t0 = performance.now();
+      try {
+        const r = await fetch(ruta);
+        const cuerpo = await r.json();
+        salida.textContent = `HTTP ${r.status} · ${Math.round(performance.now() - t0)} ms\n` + JSON.stringify(cuerpo, null, 2);
+      } catch (e) { salida.textContent = "Error: " + e.message; }
+    });
+    cont.appendChild(div);
+  }
+  const fijar = (id, txt, ok = true) => { const el = document.getElementById(id); el.textContent = txt; el.className = ok ? "ok" : "mal"; };
+  (async () => {
+    try {
+      const h = await (await fetch("/health")).json();
+      fijar("e-api", h.status === "ok" ? "en línea" : "degradada", h.status === "ok");
+      const e = await (await fetch("/estado")).json();
+      fijar("e-hosp", e.hospitales); fijar("e-reg", e.registros);
+      fijar("e-etl", e.ultima_carga_etl ? new Date(e.ultima_carga_etl.fecha).toLocaleDateString("es-CO") : "sin datos", !!e.ultima_carga_etl);
+      fijar("e-p95", e.metricas.latencia_ms_p95 + " ms");
+    } catch { fijar("e-api", "sin respuesta", false); }
+  })();
+</script>
+</body>
+</html>

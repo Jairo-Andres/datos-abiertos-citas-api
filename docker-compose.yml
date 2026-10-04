@@ -1,0 +1,21 @@
+# Entorno local completo: Postgres + API. Uso: docker compose up --build
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: citas
+      POSTGRES_PASSWORD: citas_local
+      POSTGRES_DB: citas
+    ports: ["5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U citas"]
+      interval: 5s
+      retries: 10
+  api:
+    build: .
+    environment:
+      DATABASE_URL: postgresql+psycopg://citas:citas_local@db:5432/citas
+    ports: ["8000:8000"]
+    depends_on:
+      db:
+        condition: service_healthy
