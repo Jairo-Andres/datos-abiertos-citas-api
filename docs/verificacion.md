@@ -32,6 +32,7 @@ Revisión hecha el 5 de octubre de 2026 contra las fuentes originales (datos.gov
 | Neiva | oct-2023, indicador desde la solicitud | Denominador 97.794 con resultado 1,4 | El otro indicador del mismo mes tiene denominador 9.794; con ese valor daría 14,0 días. Se excluye en vez de corregir |
 | Neiva | jul-2020 a dic-2021, ambos indicadores | La espera desde la fecha deseada sale mayor que desde la solicitud, al revés de 2018–2019 y 2022–2024 | Lo más probable es que las etiquetas estén intercambiadas en esos 18 meses; no se puede confirmar cuál es cuál |
 | Neiva | ene–jun 2020 | Cada mes aparece dos veces con valores contradictorios | Ya se descartaba antes |
+| Neiva (Res. 256) | 2020-S1 Ginecología | El semestre aparece dos veces con valores distintos: 120 días / 37 citas y 998 días / 173 citas | No se puede saber cuál es el correcto. Las otras cuatro especialidades de ese semestre se repiten con valores idénticos y se deja una copia |
 | Todas | Periodos con menos de 10 citas | El promedio depende de una o dos personas | Por ejemplo Radiología en Colón 2022-T4: 21 días con 1 cita. No aplica a Bogotá, que no publica citas |
 
 ## Valores raros que se publican (no se pueden confirmar ni descartar)
@@ -42,6 +43,11 @@ Revisión hecha el 5 de octubre de 2026 contra las fuentes originales (datos.gov
 - **Neiva dic-2022:** 699 citas en vez de unas 8.900, con resultados de 14,9 y 4,7 días. Los dos indicadores son coherentes entre sí.
 - **Popayán, Medicina interna 2026:** entre 240 y 347 citas al mes, frente a 68–100 en 2022–2025. El resultado sigue en 6,4–6,9 días.
 - **Aguadas, Odontología mar–may 2026:** 0 días con 102 a 143 citas. Plausible: la cita se asigna el mismo día.
+
+## Fuentes semestrales (agregadas el 5 de octubre de 2026)
+
+- **Neiva por especialidad (jxjp-6542):** no hay valores por encima de Q3 + 3 × IQR en ninguna especialidad. El rango va de 0,57 días (Pediatría) a 12,43 días (Cirugía general, 2018-S1: 9.512 días ÷ 765 citas). En 2020 hay pocas citas por la pandemia (por ejemplo Cirugía general 2020-S1: 65 citas); se publican.
+- **Salud Pereira (k226-53hw):** el resultado publicado coincide con numerador ÷ denominador (diferencia máxima 0,005). Medicina general va de 1,19 a 2,71 días y odontología de 0,75 a 3,17. Odontología cae a 16 citas en 2020-S2 y a 279 en 2021-S1 (pandemia); se publican tal como vienen porque superan el mínimo de 10 citas.
 
 ## Cómo se buscaron los atípicos
 

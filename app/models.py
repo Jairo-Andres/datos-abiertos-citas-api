@@ -11,7 +11,7 @@ class Hospital(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     nombre: Mapped[str] = mapped_column(String(200), unique=True)
-    tipo: Mapped[str] = mapped_column(String(20), default="hospital", server_default="hospital")  # "hospital" | "subred"
+    tipo: Mapped[str] = mapped_column(String(20), default="hospital", server_default="hospital")  # "hospital" | "subred" | "red"
     departamento: Mapped[str] = mapped_column(String(80), index=True)
     municipio: Mapped[str] = mapped_column(String(80))
     dataset_id: Mapped[str] = mapped_column(String(20))
@@ -23,7 +23,7 @@ class Hospital(Base):
 class Oportunidad(Base):
     """Un registro = días promedio de espera de un hospital, para una especialidad, en un periodo.
 
-    Las fuentes publican con granularidad distinta (mes o trimestre) y con dos definiciones de
+    Las fuentes publican con granularidad distinta (mes, trimestre o semestre) y con dos definiciones de
     espera de la Resolución 1552 de 2013: desde la fecha en que se pide la cita ("solicitud") o
     desde la fecha para la cual el paciente la pidió ("fecha_deseada").
     """
@@ -34,11 +34,13 @@ class Oportunidad(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     hospital_id: Mapped[int] = mapped_column(ForeignKey("hospitales.id"), index=True)
     especialidad: Mapped[str] = mapped_column(String(120), index=True)
-    periodo: Mapped[date] = mapped_column(Date, index=True)  # primer día del mes o del trimestre
-    granularidad: Mapped[str] = mapped_column(String(10))  # "mes" | "trimestre"
+    periodo: Mapped[date] = mapped_column(Date, index=True)  # primer día del mes, del trimestre o del semestre
+    granularidad: Mapped[str] = mapped_column(String(10))  # "mes" | "trimestre" | "semestre"
     definicion: Mapped[str] = mapped_column(String(20))  # "solicitud" | "fecha_deseada"
     dias_espera: Mapped[float] = mapped_column(Float)
     citas: Mapped[int | None] = mapped_column(Integer, nullable=True)  # citas usadas en el promedio, si la fuente lo da
+    # Dataset de origen: una unidad puede tener varias fuentes (Neiva) y cada carga reemplaza solo las suyas.
+    dataset_id: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     hospital: Mapped[Hospital] = relationship(back_populates="registros")
 

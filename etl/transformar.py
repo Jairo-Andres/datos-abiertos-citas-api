@@ -1,11 +1,12 @@
 """Una función por fuente: convierte las filas crudas de Socrata al esquema común.
 
 Esquema común (una fila por hospital × especialidad × periodo × definición):
-    especialidad, periodo (date), granularidad ("mes" | "trimestre"),
+    especialidad, periodo (date), granularidad ("mes" | "trimestre" | "semestre"),
     definicion ("solicitud" | "fecha_deseada"), dias_espera (float), citas (int | None)
 """
 
 import logging
+import re
 
 import pandas as pd
 
@@ -22,6 +23,7 @@ MESES = {
     "agosto": 8, "septiembre": 9, "setiembre": 9, "octubre": 10, "noviembre": 11, "diciembre": 12,
 }
 TRIMESTRES = {"I": 1, "II": 4, "III": 7, "IV": 10}
+SEMESTRES = {"I": 1, "II": 7, "1": 1, "2": 7}
 
 
 def _num(serie: pd.Series) -> pd.Series:
@@ -117,6 +119,60 @@ def trimestral_bogota(filas: list[dict], area: str) -> pd.DataFrame:
         "citas": pd.NA,
     })
     return _descartar_duplicados(out, ["especialidad", "periodo"], "8fpf-y7z5")
+
+
+def semestral_neiva_res256(filas: list[dict]) -> pd.DataFrame:
+    """Res. 256 de Neiva: formato largo, con el numerador y el denominador de cada especialidad en filas aparte.
+
+    "Sumatoria de la diferencia de días calendario entre la fecha en la que se asignó la cita de X de primera
+    vez y la fecha en la cual el usuario la solicitó" / "Número total de citas de X de primera vez asignadas".
+    La fuente no publica el resultado: se calcula numerador / denominador.
+    """
+    df = pd.DataFrame(filas)
+    texto = df["indicador_de_calidad"].astype(str)
+    df["esp"] = texto.str.extract(r"citas? de (.+?) de primera vez", flags=re.IGNORECASE)[0]
+    df["parte"] = None
+    df.loc[texto.str.match(r"\s*sumatoria", case=False), "parte"] = "dias"
+    df.loc[texto.str.match(r"\s*n[uú]mero total de citas", case=False), "parte"] = "citas"
+    df["sem"] = df["semestre"].str.extract(r"^\s*(II|I)\s+SEMESTRE", flags=re.IGNORECASE, expand=False).str.upper()
+    df = df.dropna(subset=["esp", "parte", "sem"])
+    # El numerador dice "Medicina Interna" y el denominador "Medicina interna": se unen por el nombre normalizado.
+    df["especialidad"] = df["esp"].map(normalizar)
+    df["valor"] = _num(df["dato"])
+    claves = ["especialidad", "a_o", "sem", "parte"]
+    repetidas = df.duplicated(claves + ["valor"])
+    _avisar("jxjp-6542", "fila repetida idéntica en la fuente: se deja una", repetidas.sum())
+    df = _descartar_duplicados(df[~repetidas], claves, "jxjp-6542")
+    ancho = df.pivot_table(index=["especialidad", "a_o", "sem"], columns="parte", values="valor", aggfunc="first").reset_index()
+    if not {"dias", "citas"} <= set(ancho.columns):
+        return pd.DataFrame(columns=COLUMNAS)
+    ancho = ancho.dropna(subset=["dias", "citas"])
+    ancho = ancho[ancho["citas"] > 0]
+    return pd.DataFrame({
+        "especialidad": ancho["especialidad"],
+        "periodo": _fecha(_num(ancho["a_o"]), ancho["sem"].map(SEMESTRES)),
+        "granularidad": "semestre",
+        "definicion": "solicitud",  # explícita en la fuente: desde la solicitud, días calendario, primera vez
+        "dias_espera": ancho["dias"] / ancho["citas"],
+        "citas": ancho["citas"],
+    })
+
+
+def semestral_pereira(filas: list[dict]) -> pd.DataFrame:
+    """E.S.E. Salud Pereira: indicadores de calidad por semestre; se usan los de oportunidad en consulta."""
+    df = pd.DataFrame(filas)
+    texto = df["descripcion_del_indicador"].astype(str).str.strip()
+    df = df[texto.str.match(r"oportunidad en consulta de ", case=False) & df["tipo_de_medida"].str.strip().str.lower().eq("dias")]
+    out = pd.DataFrame({
+        "especialidad": df["descripcion_del_indicador"].str.strip()
+        .str.replace(r"(?i)^oportunidad en consulta de ", "", regex=True).map(normalizar),
+        "periodo": _fecha(_num(df["a_o"]), df["semestre"].astype(str).str.strip().map(SEMESTRES)),
+        "granularidad": "semestre",
+        "definicion": "solicitud",  # supuesto por confirmar: la fuente cita la Res. 256 pero no define la espera
+        "dias_espera": _num(df["resultado"]),
+        "citas": _num(df["denominador"]),
+    })
+    return _descartar_duplicados(out.dropna(subset=["dias_espera", "periodo"]), ["especialidad", "periodo"], "k226-53hw")
 
 
 def microdato_aguadas(filas: list[dict]) -> pd.DataFrame:

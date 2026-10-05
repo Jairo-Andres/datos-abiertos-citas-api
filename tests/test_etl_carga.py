@@ -27,3 +27,34 @@ def test_carga_es_idempotente():
         assert s.scalar(select(func.count(Hospital.id))) == 1
         filas = s.scalars(select(Oportunidad)).all()
         assert [(f.dias_espera, f.citas) for f in filas] == [(4.0, None)]
+
+
+def test_carga_por_dataset_no_borra_otras_fuentes_de_la_misma_unidad():
+    principal = Fuente("aaaa-1111", "Hospital compartido", "Huila", "Neiva", "x")
+    secundaria = Fuente("bbbb-2222", "Hospital compartido", "Huila", "Neiva", "x", principal=False)
+    db.Base.metadata.drop_all(db.engine)
+    db.Base.metadata.create_all(db.engine)
+    with db.SessionLocal() as s:
+        h = Hospital(nombre="Hospital compartido", departamento="Huila", municipio="Neiva", dataset_id="aaaa-1111", fuente_url="u")
+        s.add(h)
+        s.flush()
+        # fila de una carga anterior a la columna dataset_id
+        s.add(Oportunidad(hospital_id=h.id, especialidad="Vieja", periodo=date(2020, 1, 1), granularidad="mes",
+                          definicion="solicitud", dias_espera=9.0))
+        s.commit()
+
+        cargar_fuente(s, principal, _df(3.0))
+        s.commit()
+        semestral = _df(5.0).assign(granularidad="semestre")
+        cargar_fuente(s, secundaria, semestral)
+        s.commit()
+        cargar_fuente(s, principal, _df(4.0))  # recarga de la principal: no toca la secundaria
+        s.commit()
+
+        filas = s.scalars(select(Oportunidad).order_by(Oportunidad.dataset_id)).all()
+        assert [(f.dataset_id, f.granularidad, f.dias_espera) for f in filas] == [
+            ("aaaa-1111", "mes", 4.0),
+            ("bbbb-2222", "semestre", 5.0),
+        ]
+        hospital = s.scalars(select(Hospital)).one()
+        assert hospital.dataset_id == "aaaa-1111"  # la fuente secundaria no cambia el origen de la unidad

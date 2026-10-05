@@ -133,3 +133,50 @@ def test_exclusiones_colon():
         ("Pediatría", date(2021, 10, 1)),
         ("Psiquiatría", date(2022, 1, 1)),
     ]
+
+
+def test_neiva_res256_une_numerador_y_denominador_por_semestre():
+    def fila(anio, sem, texto, dato):
+        return {"a_o": anio, "semestre": sem, "indicador_de_calidad": texto, "dato": dato}
+
+    suma = ("Sumatoria de la diferencia de días calendario entre la fecha en la que se asignó la cita de {} de primera vez "
+            "y la fecha en la cual el usuario la solicitó.")
+    total = "Número total de citas de {} de primera vez asignadas."
+    filas = [
+        fila("2016", "I SEMESTRE", suma.format("Medicina Interna"), "21618"),
+        fila("2016", "I SEMESTRE", total.format("Medicina interna"), "2115"),
+        fila("2016", "II SEMESTRE", suma.format("Pediatría"), "6545"),
+        fila("2016", "II SEMESTRE", total.format("Pediatría"), "1587"),
+        fila("2016", "II SEMESTRE", total.format("Pediatría"), "1587"),  # repetida idéntica: se deja una
+        # 2020-I: Ginecología aparece dos veces con valores distintos; no se sabe cuál es la buena
+        fila("2020", "I SEMESTRE", suma.format("Ginecología"), "120"),
+        fila("2020", "I SEMESTRE", total.format("Ginecología"), "37"),
+        fila("2020", "I SEMESTRE", suma.format("Ginecología"), "998"),
+        fila("2020", "I SEMESTRE", total.format("Ginecología"), "173"),
+        fila("2020", "I SEMESTRE", "Número total de pacientes hospitalizados que sufren caídas en el periodo.", "39"),
+    ]
+    df = transformar(FUENTE["semestral_neiva_res256"], filas).sort_values("periodo")
+    assert list(zip(df["especialidad"], df["periodo"], df["dias_espera"], df["citas"])) == [
+        ("Medicina interna", date(2016, 1, 1), 10.22, 2115),
+        ("Pediatría", date(2016, 7, 1), 4.12, 1587),
+    ]
+    assert set(df["granularidad"]) == {"semestre"} and set(df["definicion"]) == {"solicitud"}
+
+
+def test_pereira_semestral_toma_solo_oportunidad_en_consulta():
+    def fila(anio, sem, desc, num, den, res, medida="Dias"):
+        return {"a_o": anio, "semestre": sem, "descripcion_del_indicador": desc, "numerador": num,
+                "denominador": den, "resultado": res, "tipo_de_medida": medida}
+
+    filas = [
+        fila("2026", "1", "Oportunidad en Consulta de Medicina General", "37246", "26518", "1.40"),
+        fila("2025", "2", "Oportunidad en Consulta de odontología General", "15862", "7806", "2.03"),
+        fila("2026", "1", "Oportunidad en Imagenología", "2246", "1718", "1.31"),
+        fila("2026", "1", "Oportunidad en la Atención de Urgencias Triage II", "79259", "3381", "23.44", "Minutos"),
+    ]
+    df = transformar(FUENTE["semestral_pereira"], filas).sort_values("periodo")
+    assert list(zip(df["especialidad"], df["periodo"], df["dias_espera"], df["citas"])) == [
+        ("Odontología", date(2025, 7, 1), 2.03, 7806),
+        ("Medicina general", date(2026, 1, 1), 1.4, 26518),
+    ]
+    assert set(df["granularidad"]) == {"semestre"}
