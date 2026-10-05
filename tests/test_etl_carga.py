@@ -58,3 +58,28 @@ def test_carga_por_dataset_no_borra_otras_fuentes_de_la_misma_unidad():
         ]
         hospital = s.scalars(select(Hospital)).one()
         assert hospital.dataset_id == "aaaa-1111"  # la fuente secundaria no cambia el origen de la unidad
+
+
+def test_carga_multiunidad_reemplaza_y_borra_unidades_que_desaparecen():
+    from etl.cargar import cargar_multiunidad
+
+    fuente = Fuente("cccc-3333", "Clicsalud", "", "", "x", tipo="ips", multiunidad=True)
+
+    def df(unidades):
+        return pd.DataFrame([{"unidad": u, "departamento": "Antioquia", "municipio": "Medellín", "especialidad": "Odontología",
+                              "periodo": date(2020, 1, 1), "granularidad": "trimestre", "definicion": "solicitud",
+                              "dias_espera": 2.0, "citas": 50} for u in unidades])
+
+    db.Base.metadata.drop_all(db.engine)
+    db.Base.metadata.create_all(db.engine)
+    with db.SessionLocal() as s:
+        cargar_fuente(s, FUENTE, _df(3.0))  # otra fuente, no debe tocarse
+        cargar_multiunidad(s, fuente, df(["IPS A", "IPS B"]))
+        s.commit()
+        cargar_multiunidad(s, fuente, df(["IPS A", "IPS C"]))
+        s.commit()
+        nombres = sorted(h.nombre for h in s.scalars(select(Hospital)))
+        assert nombres == ["Hospital de prueba", "IPS A", "IPS C"]
+        assert {h.tipo for h in s.scalars(select(Hospital).where(Hospital.nombre.like("IPS%")))} == {"ips"}
+        assert s.scalar(select(func.count(Oportunidad.id)).where(Oportunidad.dataset_id == "cccc-3333")) == 2
+        assert s.scalar(select(func.count(Oportunidad.id)).where(Oportunidad.dataset_id == "abcd-1234")) == 1

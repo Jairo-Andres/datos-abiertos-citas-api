@@ -9,6 +9,7 @@ from datetime import date
 import pandas as pd
 
 MIN_CITAS = 10  # por debajo, un promedio depende de una o dos personas y no es representativo
+MAX_DIAS = 365  # un promedio de más de un año de espera en un periodo de 3 o 6 meses no es posible
 
 
 def _entre(df: pd.DataFrame, desde: date, hasta: date) -> pd.Series:
@@ -26,6 +27,10 @@ REGLAS = {
          lambda df: _entre(df, date(2020, 7, 1), date(2021, 12, 1))),
         ("Neiva oct-2023, indicador 3.2: denominador 97794 en vez de 9794 (error de digitación)",
          lambda df: (df["periodo"] == date(2023, 10, 1)) & (df["definicion"] == "solicitud")),
+    ],
+    "thui-g47e": [
+        (f"Clicsalud: promedio de más de {MAX_DIAS} días, imposible en un periodo de 3 o 6 meses",
+         lambda df: df["dias_espera"] > MAX_DIAS),
     ],
     "dt6u-2gkm": [
         ("Colón 2021-T4 Psiquiatría: 24.156 citas, unas 20 veces lo normal",

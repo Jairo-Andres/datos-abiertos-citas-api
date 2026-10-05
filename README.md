@@ -4,10 +4,10 @@
 
 **Español** · [English](#english)
 
-¿Cuántos días espera un paciente por una cita médica en un hospital público de Colombia? Cada hospital publica su propio indicador en datos.gov.co, con columnas, periodos y formatos distintos. Este proyecto los **descarga, limpia y unifica** con un ETL en pandas y los sirve en una API REST pública.
+¿Cuántos días espera un paciente por una cita médica en Colombia? Algunos hospitales públicos publican su propio indicador en datos.gov.co, cada uno con columnas, periodos y formatos distintos, y el Ministerio de Salud publicó en Clicsalud lo que reportaron miles de IPS públicas y privadas entre 2016 y 2021. Este proyecto los **descarga, limpia y unifica** con un ETL en pandas y los sirve en una API REST pública.
 
 ```
-datos.gov.co (un dataset por hospital) → ETL con pandas (GitHub Actions, semanal) → PostgreSQL (Supabase) → API FastAPI (Render)
+datos.gov.co y portal de Bogotá (un dataset por hospital, red o subred, más Clicsalud) → ETL con pandas (GitHub Actions, semanal) → PostgreSQL (Supabase) → API FastAPI (Render)
 ```
 
 - **Demo:** [https://datos-abiertos-citas-api.onrender.com](https://datos-abiertos-citas-api.onrender.com) · documentación en [/docs](https://datos-abiertos-citas-api.onrender.com/docs) (plan gratis: la primera petición puede tardar hasta un minuto)
@@ -21,9 +21,9 @@ datos.gov.co (un dataset por hospital) → ETL con pandas (GitHub Actions, seman
 | `GET /docs` | Documentación interactiva (OpenAPI) |
 | `GET /health` | Estado de la API y de la base de datos |
 | `GET /estado` | Hospitales, registros, última carga del ETL y latencia p50/p95 |
-| `GET /hospitales?depto=` | Hospitales incluidos |
+| `GET /hospitales?depto=&municipio=&tipo=&limit=&offset=` | Unidades incluidas: hospitales, redes, subredes e IPS (100 por página, máximo 1000) |
 | `GET /especialidades` | Especialidades disponibles |
-| `GET /oportunidad?especialidad=&depto=&hospital_id=&definicion=&limit=&offset=` | Días promedio de espera por hospital, especialidad y periodo |
+| `GET /oportunidad?especialidad=&depto=&municipio=&tipo=&hospital_id=&definicion=&limit=&offset=` | Días promedio de espera por unidad, especialidad y periodo |
 
 Ejemplo:
 
@@ -46,6 +46,7 @@ Los hospitales no miden la espera de la misma forma, así que no todos los núme
 | Colón | trimestre | No la dice; se asume `solicitud` (por confirmar) | Sí |
 | Salud Pereira (red de 24 sedes) | semestre | No la dice; se asume `solicitud` (por confirmar) | Sí |
 | Bogotá (4 subredes) | trimestre | `solicitud`, días calendario (según metadato) | No |
+| Clicsalud: unas 5.400 IPS de todo el país (`tipo = "ips"`), **histórico 2016 a 2021-T3** | semestre hasta 2019, trimestre en 2020–2021 | No la dice; se asume `solicitud` (por confirmar). Solo medicina general y odontología | Sí |
 
 **Sí se puede comparar**
 
@@ -61,6 +62,8 @@ Los hospitales no miden la espera de la misma forma, así que no todos los núme
 - En Neiva, el promedio de todo el hospital (mensual) contra el de una especialidad (semestral): miden universos distintos.
 - Diferencias pequeñas (uno o dos días) entre unidades: ninguna fuente aclara si incluye primera vez y control, ni si cuenta días hábiles o calendario (salvo Aguadas y Bogotá).
 - Promedios ponderados que incluyan Bogotá: no publica número de citas.
+- Una **IPS** de Clicsalud contra un hospital, red o subred: Clicsalud es una fuente agregada del Ministerio de Salud con lo que **reportó cada IPS**, no una publicación del propio hospital. Mezcla IPS públicas y privadas y la fuente no trae un campo que diga cuál es cuál. Además **termina en 2021-T3**: no sirve para hablar de la espera actual.
+- La misma institución en Clicsalud y en su propia fuente (por ejemplo una subred de Bogotá): son unidades distintas en la API; Clicsalud les agrega " (Municipio)" al nombre cuando coincide con otra unidad.
 
 Además, el ETL **excluye** datos con errores verificados contra la fuente (meses de Neiva con etiquetas invertidas, totales anuales cargados como trimestre en Colón, entre otros) y periodos con menos de 10 citas. La lista completa y la verificación del valor de Psiquiatría en Colón están en [docs/verificacion.md](docs/verificacion.md).
 
@@ -113,16 +116,16 @@ docs/       fuentes, licencias y supuestos
 
 ## Licencia
 
-Código bajo licencia MIT. Los datos son de cada hospital vía datos.gov.co, bajo CC BY-SA 4.0 (ver [docs/fuentes.md](docs/fuentes.md)).
+Código bajo licencia MIT. Los datos son de cada hospital y del Ministerio de Salud vía datos.gov.co (CC BY-SA 4.0) y de la Secretaría Distrital de Salud vía el portal de Bogotá (CC BY 4.0). Ver [docs/fuentes.md](docs/fuentes.md).
 
 ---
 
 ## English
 
-How many days does a patient wait for a medical appointment at a public hospital in Colombia? Each hospital publishes its own indicator on datos.gov.co, with different columns, periods and formats. This project **downloads, cleans and unifies** them with a pandas ETL and serves them through a public REST API.
+How many days does a patient wait for a medical appointment in Colombia? Some public hospitals publish their own indicator on datos.gov.co, each with different columns, periods and formats, and the Ministry of Health published in Clicsalud what thousands of public and private providers (IPS) reported between 2016 and 2021. This project **downloads, cleans and unifies** them with a pandas ETL and serves them through a public REST API.
 
 ```
-datos.gov.co (one dataset per hospital) → pandas ETL (GitHub Actions, weekly) → PostgreSQL (Supabase) → FastAPI (Render)
+datos.gov.co and Bogotá's portal (one dataset per hospital, network or sub-network, plus Clicsalud) → pandas ETL (GitHub Actions, weekly) → PostgreSQL (Supabase) → FastAPI (Render)
 ```
 
 - **Demo:** [https://datos-abiertos-citas-api.onrender.com](https://datos-abiertos-citas-api.onrender.com) · docs at [/docs](https://datos-abiertos-citas-api.onrender.com/docs) (free tier: the first request may take up to a minute)
@@ -136,9 +139,9 @@ datos.gov.co (one dataset per hospital) → pandas ETL (GitHub Actions, weekly) 
 | `GET /docs` | Interactive OpenAPI docs |
 | `GET /health` | API and database health |
 | `GET /estado` | Hospitals, records, last ETL run and p50/p95 latency |
-| `GET /hospitales?depto=` | Hospitals included |
+| `GET /hospitales?depto=&municipio=&tipo=&limit=&offset=` | Units included: hospitals, networks, sub-networks and IPS (100 per page, max 1000) |
 | `GET /especialidades` | Available specialties |
-| `GET /oportunidad?especialidad=&depto=&hospital_id=&definicion=&limit=&offset=` | Average waiting days by hospital, specialty and period |
+| `GET /oportunidad?especialidad=&depto=&municipio=&tipo=&hospital_id=&definicion=&limit=&offset=` | Average waiting days by unit, specialty and period |
 
 Each record includes `granularidad` (`mes` = month, `trimestre` = quarter, `semestre` = half-year) and `definicion` (`solicitud`: from the day the appointment was requested; `fecha_deseada`: from the date the patient asked for), because hospitals don't publish the same way.
 
@@ -155,6 +158,7 @@ Hospitals do not measure waiting time the same way, so not every number can be p
 | Colón | quarter | Not stated; `solicitud` assumed (to be confirmed) | Yes |
 | Salud Pereira (network of 24 sites) | half-year | Not stated; `solicitud` assumed (to be confirmed) | Yes |
 | Bogotá (4 sub-networks) | quarter | `solicitud`, calendar days (per metadata) | No |
+| Clicsalud: about 5,400 IPS nationwide (`tipo = "ips"`), **historical 2016 to 2021-Q3** | half-year until 2019, quarter in 2020–2021 | Not stated; `solicitud` assumed (to be confirmed). General medicine and dentistry only | Yes |
 
 **Comparable**
 
@@ -170,6 +174,8 @@ Hospitals do not measure waiting time the same way, so not every number can be p
 - In Neiva, the hospital-wide monthly average vs. a single specialty's half-year average: they measure different populations.
 - Small differences (one or two days) between units: no source says whether first visits and follow-ups are both included, or whether days are business or calendar days (except Aguadas and Bogotá).
 - Weighted averages that include Bogotá: it does not publish appointment counts.
+- A Clicsalud **IPS** vs. a hospital, network or sub-network: Clicsalud is an aggregated Ministry of Health source with what **each provider reported**, not a publication by the hospital itself. It mixes public and private providers with no field to tell them apart, and it **ends in 2021-Q3**: it says nothing about current waits.
+- The same institution in Clicsalud and in its own source (e.g. a Bogotá sub-network): they are separate units in the API; Clicsalud adds " (Municipality)" to the name when it matches another unit.
 
 The ETL also **excludes** data with errors verified against the source (Neiva months with swapped labels, annual totals loaded as a quarter in Colón, among others) and periods with fewer than 10 appointments. The full list and the check of the Colón psychiatry value are in [docs/verificacion.md](docs/verificacion.md).
 
@@ -212,4 +218,4 @@ API and ETL logs are JSON lines: in Render under *Logs*, and in GitHub inside ea
 
 ### License
 
-Code under the MIT license. Data belongs to each hospital via datos.gov.co, under CC BY-SA 4.0.
+Code under the MIT license. Data belongs to each hospital and the Ministry of Health via datos.gov.co (CC BY-SA 4.0) and to Bogotá's Health Department via Bogotá's portal (CC BY 4.0).

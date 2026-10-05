@@ -15,7 +15,7 @@ import pandas as pd
 
 from app.db import Base, SessionLocal, engine
 from app.observability import JsonFormatter
-from etl.cargar import cargar_fuente, registrar_carga
+from etl.cargar import cargar_fuente, cargar_multiunidad, registrar_carga
 from etl.extraer import descargar, descargar_bogota, leer_local
 from etl.fuentes import FUENTES
 from etl.transformar import transformar
@@ -46,16 +46,24 @@ def main(argv: list[str] | None = None) -> int:
         for fuente in FUENTES:
             try:
                 if fuente.dataset_id not in crudos:
-                    descarga = descargar_bogota if fuente.formato == "ckan_bogota" else descargar
-                    crudos[fuente.dataset_id] = leer_local(fuente.dataset_id, RAW) if args.local else descarga(fuente.dataset_id, RAW)
+                    if args.local:
+                        crudos[fuente.dataset_id] = leer_local(fuente.dataset_id, RAW)
+                    elif fuente.formato == "ckan_bogota":
+                        crudos[fuente.dataset_id] = descargar_bogota(fuente.dataset_id, RAW)
+                    else:
+                        crudos[fuente.dataset_id] = descargar(fuente.dataset_id, RAW, filtro=fuente.filtro)
                 df = transformar(fuente, crudos[fuente.dataset_id])
-                n = cargar_fuente(session, fuente, df)
+                n = (cargar_multiunidad if fuente.multiunidad else cargar_fuente)(session, fuente, df)
                 session.commit()
                 total += n
                 ok += 1
-                partes.append(df.assign(hospital=fuente.hospital, departamento=fuente.departamento))
+                if fuente.multiunidad:
+                    partes.append(df.rename(columns={"unidad": "hospital"}))
+                else:
+                    partes.append(df.assign(hospital=fuente.hospital, departamento=fuente.departamento))
                 log.info("fuente cargada", extra={"extra_campos": {
                     "dataset": fuente.dataset_id, "unidad": fuente.hospital, "registros": n,
+                    "unidades": int(df["unidad"].nunique()) if fuente.multiunidad else 1,
                     "especialidades": sorted(df["especialidad"].unique().tolist()),
                 }})
             except Exception as e:  # una fuente caída no debe tumbar las demás

@@ -1,6 +1,6 @@
 # Fuentes de datos
 
-Todas vienen de [datos.gov.co](https://www.datos.gov.co) y corresponden a los indicadores de oportunidad de la Resolución 1552 de 2013, que cada hospital publica por su cuenta. No existe un consolidado nacional verificado: por eso este proyecto los unifica.
+Casi todas vienen de [datos.gov.co](https://www.datos.gov.co) y corresponden a los indicadores de oportunidad de la Resolución 1552 de 2013 y de la Resolución 256 de 2016, que cada hospital publica por su cuenta. La red pública de Bogotá viene del portal de datos abiertos de Bogotá. Clicsalud es la excepción: es una fuente agregada del Ministerio de Salud (ver abajo). No existe un consolidado nacional actualizado: por eso este proyecto los unifica.
 
 | Dataset | Hospital | Periodo | Formato original | Licencia |
 |---|---|---|---|---|
@@ -10,6 +10,7 @@ Todas vienen de [datos.gov.co](https://www.datos.gov.co) y corresponden a los in
 | [jxjp-6542](https://www.datos.gov.co/d/jxjp-6542) | El mismo hospital de Neiva: indicadores de la Res. 256 de 2016 | 2016-S1 a 2024-S2, semestral | numerador y denominador por especialidad, en filas separadas | CC BY-SA 4.0 |
 | [dt6u-2gkm](https://www.datos.gov.co/d/dt6u-2gkm) | E.S.E. Hospital Pío XII de Colón (Putumayo) | 2021-T1 a 2026-T2, trimestral | promedio trimestral por especialidad | CC BY-SA 4.0 |
 | [k226-53hw](https://www.datos.gov.co/d/k226-53hw) | E.S.E. Salud Pereira (Risaralda), red municipal | 2015-S1 a 2026-S1, semestral | indicadores de calidad de la Res. 256; se usan los de medicina general y odontología | CC BY-SA 4.0 |
+| [thui-g47e](https://www.datos.gov.co/d/thui-g47e) | Clicsalud (Ministerio de Salud): unas 5.400 IPS públicas y privadas de 950 municipios | 2016-S1 a 2021-T3 (histórico) | resultado, numerador y denominador por IPS y periodo; solo medicina general y odontología | CC BY-SA 4.0 |
 | [8fpf-y7z5](https://www.datos.gov.co/d/8fpf-y7z5) → [portal de Bogotá](https://datosabiertos.bogota.gov.co/dataset/oportunidad-de-la-atencion-ambulatoria-red-publica-de-bogota-d-c) | Las 4 subredes de la red pública de Bogotá (Centro Oriente, Norte, Sur y Sur Occidente) | 2021-T1 a 2025-T1, trimestral (2025-T2 a T4 vienen vacíos en la fuente) | promedio trimestral por subred y especialidad complementaria, sin número de citas | CC BY 4.0 |
 
 ### Neiva por especialidad (Res. 256)
@@ -26,6 +27,19 @@ La E.S.E. Salud Pereira es la red pública municipal de Pereira: según su propi
 
 - De sus indicadores de calidad se usan "Oportunidad en Consulta de Medicina General" y "Oportunidad en Consulta de odontología General", en días, con numerador y denominador, por semestre.
 - La descripción enmarca los indicadores en la Res. 0256 de 2016 pero no define la espera. Se asume `solicitud` (**por confirmar**).
+
+### Clicsalud: IPS de todo el país (histórico)
+
+Clicsalud es la herramienta del Ministerio de Salud que muestra los indicadores de calidad que **reporta cada IPS** (Res. 256 de 2016). El dataset `thui-g47e` tiene 301.240 filas de muchos indicadores; el ETL descarga solo las de "TIEMPOS DE ESPERA" en días (56.359 filas): tiempo promedio de espera para la asignación de cita de medicina general y de odontología general. El triage de urgencias, en minutos, no se usa.
+
+- **Es histórico.** El dataset se actualizó por última vez el 26-05-2022 y los datos llegan hasta el 30-09-2021 (2021-T3).
+- **No es una publicación de cada hospital** sino una consolidación del Ministerio con lo que reportó cada IPS. Mezcla IPS públicas y privadas, y la fuente no trae ningún campo que diga cuál es cuál, así que la API no lo marca.
+- En la API cada IPS es una unidad con `tipo = "ips"`, separada de los hospitales, redes y subredes, aunque la IPS sea pública.
+- **Identificación.** El código de IPS viene en notación científica (`1.30E+11`) en el 83 % de las filas, así que no sirve. Cada unidad es el nombre normalizado (sin tildes ni mayúsculas, con los espacios unificados) más el municipio. Se muestra la forma del nombre que más se repite. Si el nombre aparece en más de un municipio, o coincide con una unidad de otra fuente (por ejemplo una subred de Bogotá), se le agrega " (Municipio)".
+- **Periodo.** La fuente trae la fecha de corte y no dice la granularidad. Hasta 2019 los cortes son 30 de junio y 31 de diciembre (semestres); en 2020 y 2021 son trimestrales. Se deduce por año, y el periodo es el primer día del semestre o del trimestre.
+- **Lugar.** Bogotá viene como "Bogotá, D.C."; se escribe "Bogotá" (municipio) y "Bogotá D.C." (departamento), igual que el resto de la API. Los demás nombres se dejan como vienen.
+- **Definición.** El metadato no la dice. Los indicadores P.3.1 y P.3.2 de la Res. 256 miden desde la solicitud, así que se asume `solicitud` (**por confirmar**).
+- **Limpieza.** Se descartan los totales departamentales (1.005 filas), las filas repetidas en la misma IPS y periodo con valores distintos, los promedios de más de 365 días (imposibles en un periodo de 3 o 6 meses) y los periodos con menos de 10 citas. El detalle está en [verificacion.md](verificacion.md).
 
 ### Bogotá
 
@@ -59,4 +73,4 @@ En datos.gov.co el registro `8fpf-y7z5` es solo un enlace: los datos están en e
 
 ## Licencia y atribución
 
-Los datos de datos.gov.co se redistribuyen bajo CC BY-SA 4.0 y los de Bogotá bajo CC BY 4.0, con atribución a cada hospital, a la Secretaría Distrital de Salud y a los portales de origen. El código del repositorio tiene su propia licencia (ver `LICENSE`).
+Los datos de datos.gov.co (hospitales y Clicsalud del Ministerio de Salud) se redistribuyen bajo CC BY-SA 4.0 y los de Bogotá bajo CC BY 4.0, con atribución a cada hospital, al Ministerio de Salud, a la Secretaría Distrital de Salud y a los portales de origen. El código del repositorio tiene su propia licencia (ver `LICENSE`).

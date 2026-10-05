@@ -17,18 +17,20 @@ PAGINA = 50_000
 PAUSA_S = 1.0
 
 
-def descargar(dataset_id: str, destino: Path, sesion: requests.Session | None = None) -> list[dict]:
-    """Descarga todas las filas de un dataset Socrata paginando, y las guarda en destino/ID.json."""
+def descargar(dataset_id: str, destino: Path, sesion: requests.Session | None = None, filtro: str | None = None) -> list[dict]:
+    """Descarga todas las filas de un dataset Socrata paginando, y las guarda en destino/ID.json.
+
+    filtro es un $where de SoQL para traer solo las filas útiles de datasets grandes.
+    """
     sesion = sesion or requests.Session()
     sesion.headers["User-Agent"] = USER_AGENT
     filas: list[dict] = []
     offset = 0
     while True:
-        r = sesion.get(
-            BASE.format(id=dataset_id),
-            params={"$limit": PAGINA, "$offset": offset, "$order": ":id"},
-            timeout=60,
-        )
+        params = {"$limit": PAGINA, "$offset": offset, "$order": ":id"}
+        if filtro:
+            params["$where"] = filtro
+        r = sesion.get(BASE.format(id=dataset_id), params=params, timeout=120)
         r.raise_for_status()
         lote = r.json()
         filas.extend(lote)

@@ -11,7 +11,7 @@ class Hospital(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     nombre: Mapped[str] = mapped_column(String(200), unique=True)
-    tipo: Mapped[str] = mapped_column(String(20), default="hospital", server_default="hospital")  # "hospital" | "subred" | "red"
+    tipo: Mapped[str] = mapped_column(String(20), default="hospital", server_default="hospital")  # "hospital" | "subred" | "red" | "ips"
     departamento: Mapped[str] = mapped_column(String(80), index=True)
     municipio: Mapped[str] = mapped_column(String(80))
     dataset_id: Mapped[str] = mapped_column(String(20))
@@ -40,7 +40,7 @@ class Oportunidad(Base):
     dias_espera: Mapped[float] = mapped_column(Float)
     citas: Mapped[int | None] = mapped_column(Integer, nullable=True)  # citas usadas en el promedio, si la fuente lo da
     # Dataset de origen: una unidad puede tener varias fuentes (Neiva) y cada carga reemplaza solo las suyas.
-    dataset_id: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    dataset_id: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
 
     hospital: Mapped[Hospital] = relationship(back_populates="registros")
 

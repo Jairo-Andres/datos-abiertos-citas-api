@@ -49,6 +49,31 @@ Revisión hecha el 5 de octubre de 2026 contra las fuentes originales (datos.gov
 - **Neiva por especialidad (jxjp-6542):** no hay valores por encima de Q3 + 3 × IQR en ninguna especialidad. El rango va de 0,57 días (Pediatría) a 12,43 días (Cirugía general, 2018-S1: 9.512 días ÷ 765 citas). En 2020 hay pocas citas por la pandemia (por ejemplo Cirugía general 2020-S1: 65 citas); se publican.
 - **Salud Pereira (k226-53hw):** el resultado publicado coincide con numerador ÷ denominador (diferencia máxima 0,005). Medicina general va de 1,19 a 2,71 días y odontología de 0,75 a 3,17. Odontología cae a 16 citas en 2020-S2 y a 279 en 2021-S1 (pandemia); se publican tal como vienen porque superan el mínimo de 10 citas.
 
+## Clicsalud (agregado el 5 de octubre de 2026)
+
+De las 56.359 filas de tiempos de espera en días se cargan **52.399 registros de 5.377 IPS**:
+
+| Motivo | Filas descartadas |
+|---|---|
+| Total departamental (`municipio` o `ips` = "Total") | 1.005 |
+| Misma IPS (nombre normalizado + municipio), especialidad y periodo repetidos con valores idénticos (se deja una copia) | 4 |
+| Misma IPS, especialidad y periodo con valores distintos (no se sabe cuál es el correcto; puede tratarse de sedes distintas con el mismo nombre) | 67 |
+| Promedio de más de 365 días | 18 |
+| Menos de 10 citas en el periodo | 2.866 |
+| Resultado que no cuadra con numerador ÷ denominador | 0 (cuadra en el 100 % de las filas) |
+
+Cinco ejemplos de promedios de más de 365 días (fila original de la fuente):
+
+| IPS | Municipio | Indicador | Corte | Numerador | Denominador | Resultado (días) |
+|---|---|---|---|---|---|---|
+| SBF SALUD BUCAL FAMILIAR LTDA. | Bogotá, D.C. | Odontología | 2017-12-31 | 1.604.221 | 154 | 10.417,00 |
+| Unidad de Servicios Medicos IPS Mevisalud SAS | Bogotá, D.C. | Medicina general | 2021-03-31 | 14.159.644 | 1.559 | 9.082,52 |
+| Unidad de Servicios Medicos IPS Mevisalud SAS | Bogotá, D.C. | Odontología | 2021-03-31 | 2.799.887 | 833 | 3.361,21 |
+| IPS ANESHI WAYAA SAS | Barrancas | Odontología | 2020-12-31 | 6.583 | 2 | 3.291,50 |
+| OPTICA CENTRAL RIOHACHA | Riohacha | Medicina general | 2020-06-30 | 1.151.980 | 463 | 2.488,08 |
+
+Se publican tal como vienen **55 registros entre 90 y 365 días** (el máximo cargado es 347,2). Son raros para medicina general u odontología, pero no imposibles, así que no se excluyen; tómelos con cuidado.
+
 ## Cómo se buscaron los atípicos
 
 Por hospital y especialidad: valores por encima de Q3 + 3 × IQR, saltos de más de 3 veces entre periodos consecutivos, ceros con muchas citas y número de citas muy distinto de lo habitual. Cada caso se revisó en la fila original de la fuente.

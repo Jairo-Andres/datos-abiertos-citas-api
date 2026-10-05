@@ -2,7 +2,7 @@
 
 Búsqueda hecha el 5 de octubre de 2026 en el catálogo de datos.gov.co (API de catálogo de Socrata: búsquedas por texto y recorrido completo de la categoría "Salud y Protección Social", 669 datasets) y en el portal CKAN de Bogotá. Para cada candidato se descargaron los metadatos y una muestra (en `data/raw/candidatos/`, que no se versiona). No se cambió código.
 
-Estado: jxjp-6542 y k226-53hw ya están integrados en el ETL (5 de octubre de 2026). Clicsalud (thui-g47e): Jairo decidió incluirlo con todas las IPS; se integra en un cambio aparte. Facatativá, La Virginia y Sogamoso quedan fuera por ahora.
+Estado: jxjp-6542 y k226-53hw ya están integrados en el ETL (5 de octubre de 2026). Clicsalud (thui-g47e): integrado con todas las IPS, públicas y privadas, como `tipo = "ips"`. Facatativá, La Virginia y Sogamoso quedan fuera por ahora.
 
 Clases: **A** = se integra con un transformador nuevo sencillo · **B** = se integra con trabajo o supuestos · **C** = no sirve para medir la espera.
 
@@ -10,7 +10,7 @@ Clases: **A** = se integra con un transformador nuevo sencillo · **B** = se int
 
 | id | Entidad | Ciudad | Granularidad | Rango | Especialidad | Citas | Clase | Motivo |
 |---|---|---|---|---|---|---|---|---|
-| thui-g47e | MinSalud, Clicsalud (indicadores de calidad de IPS) | Todo el país: 952 municipios, unas 1.400 IPS | semestre (2016–2019), trimestre (2020–2021) | 2016-S1 a 2021-T3 | Solo medicina general y odontología | Sí (num/den) | **B** | La única fuente con las ciudades principales y la sabana. Pero termina en 2021, es casi todo IPS privadas y hay que limpiarla |
+| thui-g47e | MinSalud, Clicsalud (indicadores de calidad de IPS) | Todo el país: 952 municipios, unas 5.400 IPS por nombre y municipio | semestre (2016–2019), trimestre (2020–2021) | 2016-S1 a 2021-T3 | Solo medicina general y odontología | Sí (num/den) | **B, integrado** | La única fuente con las ciudades principales y la sabana. Pero termina en 2021, es casi todo IPS privadas y hay que limpiarla |
 | jxjp-6542 | HU Hernando Moncaleano Perdomo | Neiva | semestre | 2016-S1 a 2024-S2 | Sí: Ginecología, Obstetricia, Pediatría, Medicina interna, Cirugía general | Sí (num/den) | **A, integrado** | Res. 256: desde la solicitud, días calendario, primera vez (explícito). Le agrega especialidades a Neiva |
 | k226-53hw | E.S.E. Salud Pereira | Pereira | semestre | 2015-S1 a 2026-S1 | Medicina general y odontología | Sí (num/den) | **A, integrado** | Serie larga y actual de una ciudad principal |
 | 2r4c-xrfz | Hospital San Pedro y San Pablo | La Virginia (Risaralda) | mes | ene a jun, **sin año** | Sí, 15 | Sí | **B** | No trae el año. Tiene dos esperas ("Espera 1" y "Espera 2") sin decir cuál es cuál |

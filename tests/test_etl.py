@@ -180,3 +180,33 @@ def test_pereira_semestral_toma_solo_oportunidad_en_consulta():
         ("Medicina general", date(2026, 1, 1), 1.4, 26518),
     ]
     assert set(df["granularidad"]) == {"semestre"}
+
+
+def test_clicsalud_unidades_periodos_y_limpieza():
+    def fila(ips, mun, cod, esp, periodo, num, den, res, depto="Antioquia"):
+        return {"coddepartamento": "5", "departamento": depto, "codmunicipio": cod, "municipio": mun, "idips": "1.30E+11",
+                "ips": ips, "nomcategorias": "TIEMPOS DE ESPERA", "nomservicio": "CONSULTAS", "nomespecifique": esp,
+                "nomindicador": "Tiempo promedio de espera", "numerador": num, "denominador": den, "resultado": res,
+                "nomunidad": "DÍAS", "nomfuente": "MinSalud", "periodo": periodo}
+
+    filas = [
+        fila("IPS  Uno ", "Medellín", "5001", "MÉDICO GENERAL", "20190630", "300", "100", "3"),
+        fila("IPS UNO", "Medellín", "5001", "MÉDICO GENERAL", "20191231", "200", "100", "2"),  # mismo nombre normalizado
+        fila("IPS Dos", "Medellín", "5001", "ODONTOLOGÍA", "20200930", "150", "100", "1.5"),
+        fila("IPS Dos", "Envigado", "5266", "ODONTOLOGÍA", "20200331", "100", "50", "2"),   # se repite en otro municipio
+        fila("Total", "Total", "0", "MÉDICO GENERAL", "20190630", "9", "3", "3"),          # total departamental
+        fila("IPS Tres", "Bogotá, D.C.", "11001", "MÉDICO GENERAL", "20210331", "200000", "100", "2000",
+             depto="Bogotá, D.C."),                                                       # imposible: más de 365 días
+        fila("IPS Cuatro", "Medellín", "5001", "MÉDICO GENERAL", "20190630", "20", "5", "4"),  # menos de 10 citas
+        fila("IPS Cinco", "Bogotá, D.C.", "11001", "ODONTOLOGÍA", "20210630", "120", "60", "2", depto="Bogotá, D.C."),
+    ]
+    df = transformar(FUENTE["clicsalud_ips"], filas).sort_values(["unidad", "periodo"])
+    assert list(zip(df["unidad"], df["municipio"], df["especialidad"], df["periodo"], df["granularidad"], df["dias_espera"])) == [
+        ("IPS Cinco", "Bogotá", "Odontología", date(2021, 4, 1), "trimestre", 2.0),
+        ("IPS Dos (Envigado)", "Envigado", "Odontología", date(2020, 1, 1), "trimestre", 2.0),
+        ("IPS Dos (Medellín)", "Medellín", "Odontología", date(2020, 7, 1), "trimestre", 1.5),
+        ("IPS Uno", "Medellín", "Medicina general", date(2019, 1, 1), "semestre", 3.0),
+        ("IPS Uno", "Medellín", "Medicina general", date(2019, 7, 1), "semestre", 2.0),
+    ]
+    # "IPS  Uno " e "IPS UNO" son la misma IPS: se muestra la primera forma con que aparece.
+    assert set(df["departamento"][df["municipio"].eq("Bogotá")]) == {"Bogotá D.C."}

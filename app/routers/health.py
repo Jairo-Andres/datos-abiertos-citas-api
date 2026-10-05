@@ -26,6 +26,7 @@ def estado(session: Session = Depends(get_session)):
     ultima = session.scalars(select(CargaETL).order_by(CargaETL.ejecutada_en.desc()).limit(1)).first()
     return {
         "hospitales": session.scalar(select(func.count(Hospital.id))),
+        "unidades_por_tipo": dict(session.execute(select(Hospital.tipo, func.count(Hospital.id)).group_by(Hospital.tipo)).all()),
         "registros": session.scalar(select(func.count(Oportunidad.id))),
         "ultima_carga_etl": None if ultima is None else {
             "fecha": ultima.ejecutada_en,

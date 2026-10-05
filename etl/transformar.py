@@ -175,6 +175,76 @@ def semestral_pereira(filas: list[dict]) -> pd.DataFrame:
     return _descartar_duplicados(out.dropna(subset=["dias_espera", "periodo"]), ["especialidad", "periodo"], "k226-53hw")
 
 
+# Columnas extra que devuelven los transformadores de fuentes con muchas unidades.
+UNIDAD = ["unidad", "departamento", "municipio"]
+
+# Clicsalud escribe Bogotá como "Bogotá, D.C."; se usa el mismo nombre que el resto de la API.
+_LUGARES = {"Bogotá, D.C.": ("Bogotá D.C.", "Bogotá")}
+
+
+def _clave_nombre(nombre: str) -> str:
+    return re.sub(r"\s+", " ", sin_tildes(nombre)).strip(" .").upper()
+
+
+def clicsalud_ips(filas: list[dict]) -> pd.DataFrame:
+    """Clicsalud (MinSalud): tiempo de espera de medicina general y odontología por IPS, reportado por cada IPS.
+
+    - Se descartan los totales departamentales (municipio o IPS = "Total") y los periodos que no son fechas.
+    - El ID de IPS viene casi siempre en notación científica (1.30E+11), así que cada unidad es
+      nombre normalizado + municipio. Si el nombre se repite en varios municipios, o coincide con una
+      unidad de otra fuente, se le agrega " (Municipio)".
+    - El periodo es la fecha de corte. La fuente no dice la granularidad: hasta 2019 los cortes son
+      30-jun y 31-dic (semestres) y desde 2020 son trimestrales; se deduce por año.
+    """
+    from etl.fuentes import FUENTES
+
+    df = pd.DataFrame(filas)
+    total = df["municipio"].eq("Total") | df["ips"].eq("Total")
+    _avisar("thui-g47e", "total departamental: se descarta", total.sum())
+    corte = pd.to_datetime(df["periodo"], format="%Y%m%d", errors="coerce")
+    _avisar("thui-g47e", "periodo que no es una fecha: se descarta", (~total & corte.isna()).sum())
+    validas = ~total & corte.notna()
+    df, corte = df[validas].copy(), corte[validas]
+
+    num, den, res = _num(df["numerador"]), _num(df["denominador"]), _num(df["resultado"])
+    no_cuadra = (num / den - res).abs() > 0.05
+    _avisar("thui-g47e", "resultado que no cuadra con numerador/denominador: se descarta", no_cuadra.sum())
+    df, corte = df[~no_cuadra], corte[~no_cuadra]
+
+    trimestral = corte.groupby(corte.dt.year).transform(lambda c: c.dt.month.isin([3, 9]).any())
+    meses = trimestral.map({True: 2, False: 5})
+    inicio = pd.to_datetime(pd.DataFrame({"year": corte.dt.year, "month": corte.dt.month - meses, "day": 1}))
+
+    lugar = df["municipio"].map(lambda m: _LUGARES.get(m, (None, m))[1])
+    depto = df["departamento"].map(lambda d: _LUGARES.get(d, (d, None))[0])
+    df["clave"] = df["ips"].map(_clave_nombre)
+    df["original"] = df["ips"].map(lambda s: re.sub(r"\s+", " ", str(s)).strip())
+    # Nombre visible: la forma más frecuente con que la IPS se escribe en ese municipio.
+    visible = df.groupby(["clave", "codmunicipio"])["original"].agg(lambda s: s.value_counts().index[0])
+    otras = {_clave_nombre(f.hospital) for f in FUENTES if not f.multiunidad}
+    varios = df.groupby("clave")["codmunicipio"].nunique()
+    unidad = [
+        f"{visible[(c, m)]} ({l})" if varios[c] > 1 or c in otras else visible[(c, m)]
+        for c, m, l in zip(df["clave"], df["codmunicipio"], lugar)
+    ]
+    out = pd.DataFrame({
+        "unidad": unidad,
+        "departamento": depto.values,
+        "municipio": lugar.values,
+        "especialidad": df["nomespecifique"].map(normalizar).values,
+        "periodo": inicio.dt.date.values,
+        "granularidad": trimestral.map({True: "trimestre", False: "semestre"}).values,
+        # Supuesto por confirmar: el metadato no define la espera; la Res. 256 (P.3.1 y P.3.2) la mide desde la solicitud.
+        "definicion": "solicitud",
+        "dias_espera": res.values,
+        "citas": den.values,
+    })
+    claves = ["unidad", "especialidad", "periodo"]
+    repetidas = out.duplicated(claves + ["dias_espera", "citas"])
+    _avisar("thui-g47e", "fila repetida idéntica en la fuente: se deja una", repetidas.sum())
+    return _descartar_duplicados(out[~repetidas], claves, "thui-g47e")
+
+
 def microdato_aguadas(filas: list[dict]) -> pd.DataFrame:
     """Una fila por cita: se agrega a promedio mensual por servicio, según el mes de la solicitud."""
     df = pd.DataFrame(filas)
@@ -199,4 +269,4 @@ def transformar(fuente: Fuente, filas: list[dict]) -> pd.DataFrame:
     df, descartes = exclusiones.aplicar(df, fuente.dataset_id)
     for motivo, filas_descartadas in descartes:
         _avisar(fuente.dataset_id, f"excluido: {motivo}", filas_descartadas)
-    return df[COLUMNAS].reset_index(drop=True)
+    return df[COLUMNAS + [c for c in UNIDAD if c in df]].reset_index(drop=True)

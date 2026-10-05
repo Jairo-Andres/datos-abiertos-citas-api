@@ -1,3 +1,6 @@
+from datetime import date
+
+
 def test_health(client):
     r = client.get("/health")
     assert r.status_code == 200
@@ -54,3 +57,32 @@ def test_oportunidad_filtra_por_definicion(client):
 def test_tipo_de_unidad_en_respuestas(client):
     assert {h["tipo"] for h in client.get("/hospitales").json()} == {"hospital"}
     assert client.get("/oportunidad", params={"limit": 1}).json()["items"][0]["tipo"] == "hospital"
+
+
+def _agregar_ips(client):
+    import app.db as db
+    from app.models import Hospital, Oportunidad
+    with db.SessionLocal() as s:
+        h = Hospital(nombre="IPS Prueba", tipo="ips", departamento="Antioquia", municipio="Medellín", dataset_id="x3", fuente_url="u3")
+        s.add(h)
+        s.flush()
+        s.add(Oportunidad(hospital_id=h.id, especialidad="Odontología", periodo=date(2021, 1, 1), granularidad="trimestre",
+                          definicion="solicitud", dias_espera=1.5, citas=30, dataset_id="x3"))
+        s.commit()
+
+
+def test_hospitales_filtra_por_tipo_y_municipio_y_pagina(client):
+    _agregar_ips(client)
+    assert [h["nombre"] for h in client.get("/hospitales", params={"tipo": "ips"}).json()] == ["IPS Prueba"]
+    assert [h["nombre"] for h in client.get("/hospitales", params={"municipio": "MEDELLÍN"}).json()] == ["IPS Prueba"]
+    assert [h["nombre"] for h in client.get("/hospitales", params={"limit": 1, "offset": 1}).json()] == ["Hospital B"]
+    assert client.get("/hospitales", params={"limit": 1001}).status_code == 422
+    assert client.get("/hospitales", params={"tipo": "otro"}).status_code == 422
+
+
+def test_oportunidad_filtra_por_tipo_y_municipio(client):
+    _agregar_ips(client)
+    ips = client.get("/oportunidad", params={"tipo": "ips"}).json()
+    assert ips["total"] == 1 and ips["items"][0]["tipo"] == "ips"
+    assert client.get("/oportunidad", params={"municipio": "neiva"}).json()["total"] == 1
+    assert client.get("/oportunidad", params={"tipo": "hospital"}).json()["total"] == 3

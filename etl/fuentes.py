@@ -10,11 +10,14 @@ class Fuente:
     departamento: str
     municipio: str
     transformador: str  # nombre de la función en etl/transformar.py
-    tipo: str = "hospital"  # "hospital" | "subred" | "red" (las dos últimas agrupan varias sedes)
+    tipo: str = "hospital"  # "hospital" | "subred" | "red" (agrupan varias sedes) | "ips" (Clicsalud)
     formato: str = "socrata"  # "socrata" (datos.gov.co) | "ckan_bogota" (datosabiertos.bogota.gov.co)
     area: str | None = None  # para fuentes que traen varias unidades en el mismo archivo
     # False cuando la unidad ya tiene otra fuente principal: así no se cambia el enlace de origen de la unidad.
     principal: bool = True
+    # True cuando el archivo trae muchas unidades y el transformador devuelve sus columnas (Clicsalud).
+    multiunidad: bool = False
+    filtro: str | None = None  # $where de SoQL para descargar solo las filas útiles
 
     @property
     def url(self) -> str:
@@ -48,6 +51,13 @@ FUENTES = [
     _subred("sur", "Sur"),
     _subred("suroccidente", "Sur Occidente"),
 ]
+
+# Fuente agregada del Ministerio de Salud: miles de IPS públicas y privadas, histórica (2016 a 2021-T3).
+CLICSALUD = Fuente(
+    "thui-g47e", "Clicsalud - MinSalud", "", "", "clicsalud_ips", tipo="ips", multiunidad=True,
+    filtro="nomcategorias = 'TIEMPOS DE ESPERA' AND nomunidad = 'DÍAS'",
+)
+FUENTES.append(CLICSALUD)
 
 # Revisado y descartado (ver docs/fuentes.md):
 # k5bd-cym5 (HU de Santander): solo trae la fecha de la cita cumplida; sin fecha de solicitud no hay
