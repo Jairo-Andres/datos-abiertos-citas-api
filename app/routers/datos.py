@@ -53,6 +53,7 @@ def oportunidad(
     items = [
         OportunidadOut(
             hospital=h.nombre,
+            tipo=h.tipo,
             departamento=h.departamento,
             municipio=h.municipio,
             especialidad=o.especialidad,

@@ -8,21 +8,37 @@ Todas vienen de [datos.gov.co](https://www.datos.gov.co) y corresponden a los in
 | [mq52-ekyw](https://www.datos.gov.co/d/mq52-ekyw) | E.S.E. Hospital San José de Aguadas (Caldas) | ene a jun-2026 | una fila por cita; se agrega a promedio mensual | CC BY-SA 4.0 |
 | [2hbw-r639](https://www.datos.gov.co/d/2hbw-r639) | E.S.E. Hospital Universitario Hernando Moncaleano Perdomo (Neiva, Huila) | ene-2018 a dic-2024, mensual | promedio mensual de todo el hospital, sin especialidad | CC BY-SA 4.0 |
 | [dt6u-2gkm](https://www.datos.gov.co/d/dt6u-2gkm) | E.S.E. Hospital Pío XII de Colón (Putumayo) | 2021-T1 a 2026-T2, trimestral | promedio trimestral por especialidad | CC BY-SA 4.0 |
+| [8fpf-y7z5](https://www.datos.gov.co/d/8fpf-y7z5) → [portal de Bogotá](https://datosabiertos.bogota.gov.co/dataset/oportunidad-de-la-atencion-ambulatoria-red-publica-de-bogota-d-c) | Las 4 subredes de la red pública de Bogotá (Centro Oriente, Norte, Sur y Sur Occidente) | 2021-T1 a 2025-T1, trimestral (2025-T2 a T4 vienen vacíos en la fuente) | promedio trimestral por subred y especialidad complementaria, sin número de citas | CC BY 4.0 |
 
-Revisados y no usados por ahora:
+### Bogotá
 
-- [k5bd-cym5](https://www.datos.gov.co/d/k5bd-cym5), Hospital Universitario de Santander: trae la fecha de cada cita cumplida, pero no la fecha de solicitud ni el tiempo de espera, así que no permite calcular oportunidad.
-- [8fpf-y7z5](https://www.datos.gov.co/d/8fpf-y7z5), red pública de Bogotá: en datos.gov.co es solo un enlace al portal de datos abiertos de Bogotá (CC BY 4.0).
+En datos.gov.co el registro `8fpf-y7z5` es solo un enlace: los datos están en el portal de datos abiertos de Bogotá, publicados por la Secretaría Distrital de Salud como un CSV (Latin-1, separado por punto y coma, coma decimal). El ETL lo descarga por la API CKAN del portal.
+
+- **No es un hospital sino una subred**, que agrupa varias sedes. En la API cada subred es una unidad con `tipo = "subred"`.
+- La fila "Distrito" es el agregado de las cuatro subredes y **no se carga**, para no contar dos veces.
+- Trae 7 especialidades complementarias (Cardiología, Cirugía general, Fisiatría, Oftalmología, Ortopedia, Otorrinolaringología y Urología). Solo Cirugía general coincide con otros hospitales.
+- **No publica el número de citas**, así que no se puede ponderar ni aplicar el mínimo de citas.
+- Las filas sin días se descartan: 2025-T2 a T4 llegan vacíos en la fuente y en Sur Occidente falta una especialidad por trimestre entre 2024-T2 y 2025-T1.
+- El metadato define la espera desde la solicitud en días calendario, pero describe otra versión del dataset (especialidades básicas, semestral, desde 2016). Se asume que la fórmula es la misma (**por confirmar**).
+
+### Revisado y descartado
+
+[k5bd-cym5](https://www.datos.gov.co/d/k5bd-cym5), Hospital Universitario de Santander. Se descargaron las 236.023 filas y se revisaron los metadatos:
+
+- Cada fila es una cita **cumplida** con su fecha (día, mes y año). No hay fecha de solicitud ni de asignación, ni ninguna columna de espera, y las columnas no tienen descripción. **Sin la fecha de solicitud no hay forma de calcular la oportunidad**, así que no entra en la tabla de espera.
+- La entidad no publica otro dataset con tiempos de espera en datos.gov.co (sus otros datasets son urgencias, egresos, nacimientos y documentos de transparencia).
+- Lo único que permitiría es contar citas cumplidas por especialidad y mes (2020–2025), que es otra medida. Además trae edad, sexo, tipo de documento y asegurador de cada paciente, así que solo podría publicarse agregado.
 
 ## Decisiones y supuestos
 
 - **Dos definiciones de espera.** La resolución mide la espera desde la fecha en que se pide la cita (`solicitud`) y desde la fecha para la cual el paciente la pidió (`fecha_deseada`). Neiva publica ambas; las demás fuentes no lo aclaran y se asume `solicitud` (**por confirmar**). En Aguadas está verificado: los días coinciden con asignación menos solicitud en el 100 % de las filas.
 - **Granularidad mixta.** Colón publica por trimestre y las demás por mes. Cada registro dice su `granularidad`; no se reparten trimestres en meses.
 - **Valor publicado.** Se usa el resultado que publica el hospital, aunque a veces no coincide exactamente con numerador/denominador (redondeo en Popayán, hasta 2,9 días de diferencia en Colón).
-- **Neiva 2020.** De enero a junio de 2020 cada mes aparece dos veces con los valores de los dos indicadores intercambiados. Como no hay forma de saber cuál es el correcto, esos meses se descartan. Desde mediados de 2020 los valores de los dos indicadores parecen invertidos respecto a 2018 (**por confirmar** con el hospital); se publican tal como vienen.
-- **Colón.** Se descartan las filas anuales (`VIGENCIA`) y las de denominador 0. Las especialidades se unen por nombre, porque el código del indicador cambia de especialidad entre periodos. Falta el primer trimestre de 2024 en la fuente.
+- **Neiva 2020–2021.** De enero a junio de 2020 cada mes aparece dos veces con valores contradictorios, y de julio de 2020 a diciembre de 2021 los dos indicadores parecen tener las etiquetas invertidas. Esos 24 meses no se cargan. Ver [verificacion.md](verificacion.md).
+- **Colón.** Se descartan las filas anuales (`VIGENCIA`), las de denominador 0 y las de errores evidentes (2021-T4 en cuatro especialidades y todo 2023-T4). Las especialidades se unen por nombre, porque el código del indicador cambia de especialidad entre periodos. Falta el primer trimestre de 2024 en la fuente.
+- **Mínimo de citas.** No se publican periodos con menos de 10 citas.
 - **Privacidad.** Aguadas publica una fila por cita con sexo, régimen y EPS. El ETL solo guarda promedios mensuales por servicio; ningún dato por paciente llega a la base ni a la API.
 
 ## Licencia y atribución
 
-Los datos se redistribuyen bajo CC BY-SA 4.0, con atribución a cada hospital y a datos.gov.co. El código del repositorio tiene su propia licencia (ver `LICENSE`).
+Los datos de datos.gov.co se redistribuyen bajo CC BY-SA 4.0 y los de Bogotá bajo CC BY 4.0, con atribución a cada hospital, a la Secretaría Distrital de Salud y a los portales de origen. El código del repositorio tiene su propia licencia (ver `LICENSE`).

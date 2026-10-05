@@ -33,6 +33,34 @@ curl "https://datos-abiertos-citas-api.onrender.com/oportunidad?especialidad=ped
 
 Cada registro trae `granularidad` (`mes` o `trimestre`) y `definicion` (`solicitud`: desde que se pide la cita; `fecha_deseada`: desde la fecha para la cual se pidió), porque los hospitales no publican igual. Ver [docs/fuentes.md](docs/fuentes.md).
 
+## Qué se puede comparar
+
+Los hospitales no miden la espera de la misma forma, así que no todos los números se pueden poner lado a lado. Resumen (detalle en [docs/fuentes.md](docs/fuentes.md) y [docs/verificacion.md](docs/verificacion.md)):
+
+| Unidad | Periodo | Definición publicada | Citas (denominador) |
+|---|---|---|---|
+| Popayán | mes | No la dice; se asume `solicitud` (por confirmar) | Sí |
+| Aguadas | mes (agregado desde microdato) | `solicitud`, días calendario (verificado fila a fila) | Sí |
+| Neiva | mes | `solicitud` y `fecha_deseada`, ambas explícitas | Sí |
+| Colón | trimestre | No la dice; se asume `solicitud` (por confirmar) | Sí |
+| Bogotá (4 subredes) | trimestre | `solicitud`, días calendario (según metadato) | No |
+
+**Sí se puede comparar**
+
+- La evolución de una misma unidad y especialidad en el tiempo, con la misma `definicion` y `granularidad`.
+- Neiva contra Aguadas con `definicion=solicitud`: ambos lo declaran explícitamente (Neiva solo publica el promedio de todo el hospital).
+- Órdenes de magnitud entre unidades (por ejemplo, 5 contra 40 días), dejando claro que Popayán y Colón usan una definición asumida.
+
+**No se puede comparar (o solo con advertencia)**
+
+- `solicitud` contra `fecha_deseada`: miden desde puntos distintos; la segunda suele ser menor.
+- Un mes contra un trimestre: el promedio trimestral suaviza picos. Para comparar, agregue los meses al trimestre ponderando por `citas`.
+- Una **subred** de Bogotá contra un **hospital**: la subred agrupa varias sedes (campo `tipo`).
+- Diferencias pequeñas (uno o dos días) entre unidades: ninguna fuente aclara si incluye primera vez y control, ni si cuenta días hábiles o calendario (salvo Aguadas y Bogotá).
+- Promedios ponderados que incluyan Bogotá: no publica número de citas.
+
+Además, el ETL **excluye** datos con errores verificados contra la fuente (meses de Neiva con etiquetas invertidas, totales anuales cargados como trimestre en Colón, entre otros) y periodos con menos de 10 citas. La lista completa y la verificación del valor de Psiquiatría en Colón están en [docs/verificacion.md](docs/verificacion.md).
+
 ## Correrlo en local
 
 Requisitos: Python 3.12. Docker es opcional.
@@ -110,6 +138,34 @@ datos.gov.co (one dataset per hospital) → pandas ETL (GitHub Actions, weekly) 
 | `GET /oportunidad?especialidad=&depto=&hospital_id=&definicion=&limit=&offset=` | Average waiting days by hospital, specialty and period |
 
 Each record includes `granularidad` (`mes` = month, `trimestre` = quarter) and `definicion` (`solicitud`: from the day the appointment was requested; `fecha_deseada`: from the date the patient asked for), because hospitals don't publish the same way.
+
+### What can be compared
+
+Hospitals do not measure waiting time the same way, so not every number can be put side by side. Summary (details in Spanish in [docs/fuentes.md](docs/fuentes.md) and [docs/verificacion.md](docs/verificacion.md)):
+
+| Unit | Period | Published definition | Appointments (denominator) |
+|---|---|---|---|
+| Popayán | month | Not stated; `solicitud` assumed (to be confirmed) | Yes |
+| Aguadas | month (aggregated from microdata) | `solicitud`, calendar days (verified row by row) | Yes |
+| Neiva | month | `solicitud` and `fecha_deseada`, both explicit | Yes |
+| Colón | quarter | Not stated; `solicitud` assumed (to be confirmed) | Yes |
+| Bogotá (4 sub-networks) | quarter | `solicitud`, calendar days (per metadata) | No |
+
+**Comparable**
+
+- The trend of the same unit and specialty over time, with the same `definicion` and `granularidad`.
+- Neiva vs. Aguadas with `definicion=solicitud`: both state it explicitly (Neiva only publishes the hospital-wide average).
+- Orders of magnitude across units (e.g. 5 vs. 40 days), keeping in mind that Popayán and Colón use an assumed definition.
+
+**Not comparable (or only with a caveat)**
+
+- `solicitud` vs. `fecha_deseada`: they start counting at different points; the latter is usually lower.
+- A month vs. a quarter: quarterly averages smooth out peaks. To compare, aggregate months into quarters weighted by `citas`.
+- A Bogotá **sub-network** vs. a **hospital**: a sub-network groups several sites (field `tipo`).
+- Small differences (one or two days) between units: no source says whether first visits and follow-ups are both included, or whether days are business or calendar days (except Aguadas and Bogotá).
+- Weighted averages that include Bogotá: it does not publish appointment counts.
+
+The ETL also **excludes** data with errors verified against the source (Neiva months with swapped labels, annual totals loaded as a quarter in Colón, among others) and periods with fewer than 10 appointments. The full list and the check of the Colón psychiatry value are in [docs/verificacion.md](docs/verificacion.md).
 
 ### Run locally
 

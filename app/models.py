@@ -11,6 +11,7 @@ class Hospital(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     nombre: Mapped[str] = mapped_column(String(200), unique=True)
+    tipo: Mapped[str] = mapped_column(String(20), default="hospital", server_default="hospital")  # "hospital" | "subred"
     departamento: Mapped[str] = mapped_column(String(80), index=True)
     municipio: Mapped[str] = mapped_column(String(80))
     dataset_id: Mapped[str] = mapped_column(String(20))

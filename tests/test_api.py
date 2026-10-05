@@ -49,3 +49,8 @@ def test_oportunidad_filtra_por_definicion(client):
     items = client.get("/oportunidad", params={"definicion": "fecha_deseada"}).json()["items"]
     assert [i["hospital"] for i in items] == ["Hospital B"]
     assert client.get("/oportunidad", params={"definicion": "otra"}).status_code == 422
+
+
+def test_tipo_de_unidad_en_respuestas(client):
+    assert {h["tipo"] for h in client.get("/hospitales").json()} == {"hospital"}
+    assert client.get("/oportunidad", params={"limit": 1}).json()["items"][0]["tipo"] == "hospital"

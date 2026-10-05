@@ -16,7 +16,7 @@ import pandas as pd
 from app.db import Base, SessionLocal, engine
 from app.observability import JsonFormatter
 from etl.cargar import cargar_fuente, registrar_carga
-from etl.extraer import descargar, leer_local
+from etl.extraer import descargar, descargar_bogota, leer_local
 from etl.fuentes import FUENTES
 from etl.transformar import transformar
 
@@ -41,24 +41,29 @@ def main(argv: list[str] | None = None) -> int:
     Base.metadata.create_all(engine)
 
     total, ok, errores, partes = 0, 0, 0, []
+    crudos: dict[str, list[dict]] = {}  # varias unidades pueden salir del mismo archivo (Bogotá)
     with SessionLocal() as session:
         for fuente in FUENTES:
             try:
-                filas = leer_local(fuente.dataset_id, RAW) if args.local else descargar(fuente.dataset_id, RAW)
-                df = transformar(fuente.transformador, filas)
+                if fuente.dataset_id not in crudos:
+                    descarga = descargar_bogota if fuente.formato == "ckan_bogota" else descargar
+                    crudos[fuente.dataset_id] = leer_local(fuente.dataset_id, RAW) if args.local else descarga(fuente.dataset_id, RAW)
+                df = transformar(fuente, crudos[fuente.dataset_id])
                 n = cargar_fuente(session, fuente, df)
                 session.commit()
                 total += n
                 ok += 1
                 partes.append(df.assign(hospital=fuente.hospital, departamento=fuente.departamento))
                 log.info("fuente cargada", extra={"extra_campos": {
-                    "dataset": fuente.dataset_id, "registros": n,
+                    "dataset": fuente.dataset_id, "unidad": fuente.hospital, "registros": n,
                     "especialidades": sorted(df["especialidad"].unique().tolist()),
                 }})
             except Exception as e:  # una fuente caída no debe tumbar las demás
                 session.rollback()
                 errores += 1
-                log.error("fuente con error", extra={"extra_campos": {"dataset": fuente.dataset_id, "error": repr(e)}})
+                log.error("fuente con error", extra={"extra_campos": {
+                    "dataset": fuente.dataset_id, "unidad": fuente.hospital, "error": repr(e),
+                }})
         registrar_carga(session, total, ok, errores)
         session.commit()
 

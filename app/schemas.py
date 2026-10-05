@@ -8,6 +8,7 @@ class HospitalOut(BaseModel):
 
     id: int
     nombre: str
+    tipo: str
     departamento: str
     municipio: str
     fuente_url: str
@@ -15,6 +16,7 @@ class HospitalOut(BaseModel):
 
 class OportunidadOut(BaseModel):
     hospital: str
+    tipo: str
     departamento: str
     municipio: str
     especialidad: str

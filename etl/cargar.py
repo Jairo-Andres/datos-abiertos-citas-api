@@ -7,12 +7,14 @@ from etl.fuentes import Fuente
 
 
 def cargar_fuente(session: Session, fuente: Fuente, df: pd.DataFrame) -> int:
-    """Reemplaza todos los registros del hospital con lo que trae la fuente hoy (carga idempotente)."""
-    hospital = session.scalars(select(Hospital).where(Hospital.dataset_id == fuente.dataset_id)).first()
+    """Reemplaza todos los registros de la unidad con lo que trae la fuente hoy (carga idempotente)."""
+    # Se identifica por nombre: un mismo dataset puede traer varias unidades (las subredes de Bogotá).
+    hospital = session.scalars(select(Hospital).where(Hospital.nombre == fuente.hospital)).first()
     if hospital is None:
-        hospital = Hospital(dataset_id=fuente.dataset_id, nombre=fuente.hospital)
+        hospital = Hospital(nombre=fuente.hospital)
         session.add(hospital)
-    hospital.nombre = fuente.hospital
+    hospital.dataset_id = fuente.dataset_id
+    hospital.tipo = fuente.tipo
     hospital.departamento = fuente.departamento
     hospital.municipio = fuente.municipio
     hospital.fuente_url = fuente.url

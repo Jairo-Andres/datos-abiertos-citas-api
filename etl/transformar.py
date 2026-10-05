@@ -9,7 +9,9 @@ import logging
 
 import pandas as pd
 
-from etl.especialidades import TODAS, desde_indicador, normalizar
+from etl import exclusiones
+from etl.especialidades import TODAS, desde_indicador, normalizar, sin_tildes
+from etl.fuentes import Fuente
 
 log = logging.getLogger("etl")
 
@@ -95,6 +97,28 @@ def indicador_trimestral_colon(filas: list[dict]) -> pd.DataFrame:
     return _descartar_duplicados(out.dropna(subset=["dias_espera"]), ["especialidad", "periodo"], "dt6u-2gkm")
 
 
+def trimestral_bogota(filas: list[dict], area: str) -> pd.DataFrame:
+    """CSV del portal de Bogotá: una fila por área (subred), trimestre y especialidad, sin número de citas."""
+    df = pd.DataFrame(filas)
+    df.columns = [sin_tildes(c) for c in df.columns]  # "Año" y "Días" vienen con tilde
+    df = df[df["area"].map(lambda v: sin_tildes(str(v)).replace(" ", "")) == area.replace(" ", "")]
+    romano = df["periodo"].str.extract(r"^\s*(IV|I{1,3})\s+Trim", expand=False)
+    dias = _num(df["dias"].astype(str).str.replace(",", ".", regex=False))
+    validas = romano.notna() & dias.notna()
+    _avisar("8fpf-y7z5", f"{area}: fila sin días o con periodo no reconocido: se descarta", (~validas).sum())
+    df, romano, dias = df[validas], romano[validas], dias[validas]
+    out = pd.DataFrame({
+        "especialidad": df["especialidad"].map(normalizar),
+        "periodo": _fecha(_num(df["ano"]), romano.map(TRIMESTRES)),
+        "granularidad": "trimestre",
+        # El metadato de Bogotá define la espera desde la solicitud, en días calendario.
+        "definicion": "solicitud",
+        "dias_espera": dias,
+        "citas": pd.NA,
+    })
+    return _descartar_duplicados(out, ["especialidad", "periodo"], "8fpf-y7z5")
+
+
 def microdato_aguadas(filas: list[dict]) -> pd.DataFrame:
     """Una fila por cita: se agrega a promedio mensual por servicio, según el mes de la solicitud."""
     df = pd.DataFrame(filas)
@@ -111,8 +135,12 @@ def microdato_aguadas(filas: list[dict]) -> pd.DataFrame:
     return out
 
 
-def transformar(nombre: str, filas: list[dict]) -> pd.DataFrame:
-    df = globals()[nombre](filas)
+def transformar(fuente: Fuente, filas: list[dict]) -> pd.DataFrame:
+    funcion = globals()[fuente.transformador]
+    df = funcion(filas, fuente.area) if fuente.area else funcion(filas)
     df["dias_espera"] = df["dias_espera"].astype(float).round(2)
     df["citas"] = df["citas"].astype("Int64")
+    df, descartes = exclusiones.aplicar(df, fuente.dataset_id)
+    for motivo, filas_descartadas in descartes:
+        _avisar(fuente.dataset_id, f"excluido: {motivo}", filas_descartadas)
     return df[COLUMNAS].reset_index(drop=True)

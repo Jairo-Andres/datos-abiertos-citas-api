@@ -8,6 +8,12 @@ TODAS = "Todas las especialidades"
 # clave sin tildes ni mayúsculas -> nombre canónico
 _CANONICAS = {
     "anestesiologia": "Anestesiología",
+    "cardiologia": "Cardiología",
+    "fisiatria": "Fisiatría",
+    "oftalmologia": "Oftalmología",
+    "ortopedia": "Ortopedia",
+    "otorrinolaringologia": "Otorrinolaringología",
+    "urologia": "Urología",
     "cirugia general": "Cirugía general",
     "ecografia": "Ecografía",
     "enfermeria": "Enfermería",
