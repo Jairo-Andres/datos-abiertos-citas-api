@@ -10,7 +10,7 @@
 datos.gov.co (un dataset por hospital) → ETL con pandas (GitHub Actions, semanal) → PostgreSQL (Supabase) → API FastAPI (Render)
 ```
 
-- **Demo:** _pendiente del despliegue_
+- **Demo:** [https://datos-abiertos-citas-api.onrender.com](https://datos-abiertos-citas-api.onrender.com) · documentación en [/docs](https://datos-abiertos-citas-api.onrender.com/docs) (plan gratis: la primera petición puede tardar hasta un minuto)
 - **Fuentes, licencias y supuestos:** [docs/fuentes.md](docs/fuentes.md)
 
 ## Endpoints
@@ -28,7 +28,7 @@ datos.gov.co (un dataset por hospital) → ETL con pandas (GitHub Actions, seman
 Ejemplo:
 
 ```bash
-curl "https://TU-SERVICIO.onrender.com/oportunidad?especialidad=pedia&limit=2"
+curl "https://datos-abiertos-citas-api.onrender.com/oportunidad?especialidad=pedia&limit=2"
 ```
 
 Cada registro trae `granularidad` (`mes` o `trimestre`) y `definicion` (`solicitud`: desde que se pide la cita; `fecha_deseada`: desde la fecha para la cual se pidió), porque los hospitales no publican igual. Ver [docs/fuentes.md](docs/fuentes.md).
@@ -94,7 +94,7 @@ How many days does a patient wait for a medical appointment at a public hospital
 datos.gov.co (one dataset per hospital) → pandas ETL (GitHub Actions, weekly) → PostgreSQL (Supabase) → FastAPI (Render)
 ```
 
-- **Demo:** _pending deployment_
+- **Demo:** [https://datos-abiertos-citas-api.onrender.com](https://datos-abiertos-citas-api.onrender.com) · docs at [/docs](https://datos-abiertos-citas-api.onrender.com/docs) (free tier: the first request may take up to a minute)
 - **Sources, licenses and assumptions** (Spanish): [docs/fuentes.md](docs/fuentes.md)
 
 ### Endpoints
